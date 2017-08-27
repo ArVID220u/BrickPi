@@ -17,23 +17,27 @@
 from BrickPi import *
 BrickPiSetup()
 
+from time import sleep
+
 BrickPi.MotorEnable[PORT_A] = 1 #Enable the Motor A
 BrickPi.MotorEnable[PORT_B] = 1 #Enable the Motor B
 BrickPi.MotorEnable[PORT_C] = 1 #Enable the Motor C
 BrickPi.MotorEnable[PORT_D] = 1 #Enable the Motor D
 
-print "Note: One encoder value counts for 0.5 degrees. So 360 degrees = 720 enc. Hence, to get degress = (enc%720)/2 "
+print("Note: One encoder value counts for 0.5 degrees. So 360 degrees = 720 enc. Hence, to get degress = (enc%720)/2 ")
 
 while True:
 
-	result = BrickPiUpdateValues()
-	Encoder_A_2 = BrickPi.Encoder[PORT_A]
-	Encoder_B_2 = BrickPi.Encoder[PORT_B]
-	Encoder_C_2 = BrickPi.Encoder[PORT_C]
-	Encoder_D_2 = BrickPi.Encoder[PORT_D]
-	
-	print "Encoder A: " + str(Encoder_A_2)
-	print "Encoder B: " + str(Encoder_B_2)
-	print "Encoder C: " + str(Encoder_C_2)
-	print "Encoder D: " + str(Encoder_D_2)
-	print "___________________"
+    result = BrickPiUpdateValues()
+    Encoder_A_2 = BrickPi.Encoder[PORT_A]
+    Encoder_B_2 = BrickPi.Encoder[PORT_B]
+    Encoder_C_2 = BrickPi.Encoder[PORT_C]
+    Encoder_D_2 = BrickPi.Encoder[PORT_D]
+
+    print("Encoder A: " + str(Encoder_A_2))
+    print("Encoder B: " + str(Encoder_B_2))
+    print("Encoder C: " + str(Encoder_C_2))
+    print("Encoder D: " + str(Encoder_D_2))
+    print("___________________")
+
+    sleep(1)

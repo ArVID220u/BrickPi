@@ -43,7 +43,7 @@ def run_forward():
     ot = time.time()
     while(time.time() - ot < 3):    #running while loop for 3 seconds
         BrickPiUpdateValues()       # Ask BrickPi to update values for sensors/motors
-	time.sleep(.1)
+        time.sleep(0.1)
 
 while True:
 
