@@ -368,9 +368,11 @@ def motorRotateDegree(power,deg,port,sampling_time=.1,delay_when_stopping=.05):
             BrickPi.MotorSpeed[port[i]] = -power[i]
         else:
             BrickPi.MotorSpeed[port[i]] = 0
-            init_val[i]=BrickPi.Encoder[port[i]]        #Initial reading of the encoder
+        init_val[i]=BrickPi.Encoder[port[i]]        #Initial reading of the encoder
         final_val[i]=init_val[i]+(deg[i]*2)        #Final value when the motor has to be stopped;One encoder value counts for 0.5 degrees
     run_stat=[0]*num_motor
+    print("initval: " + str(init_val[0]))
+    print("finalval: " + str(final_val[0]))
     while True:
         result = BrickPiUpdateValues()          #Ask BrickPi to update values for sensors/motors
         if not result :
@@ -383,6 +385,7 @@ def motorRotateDegree(power,deg,port,sampling_time=.1,delay_when_stopping=.05):
                     init_val[i]=BrickPi.Encoder[port[i]]
                 else:
                     run_stat[i]=1
+                    print("realfinalval: " + str(BrickPi.Encoder[port[i]]))
 
             # Updated for compatibility with Python3
                     # BrickPi.MotorSpeed[port[i]]=-power[i] if deg[i]>0 else power[i]  #Run the motors in reverse direction to stop instantly
@@ -397,6 +400,7 @@ def motorRotateDegree(power,deg,port,sampling_time=.1,delay_when_stopping=.05):
                     time.sleep(delay_when_stopping)
                     BrickPi.MotorEnable[port[i]] = 0
                     BrickPiUpdateValues()
+                    print("superrealfinalval: " + str(BrickPi.Encoder[port[i]]))
         time.sleep(sampling_time)          #sleep for the sampling time given (default:100 ms)
         if(all(e==1 for e in run_stat)):        #If all the motors have already completed their rotation, then stop
             break
@@ -788,3 +792,81 @@ def BrickPiRx(timeout):
     InBytes = RxBytes - 2
 
     return 0, InBytes, InArray
+
+
+
+
+# computes estimated time of arrival in seconds
+# not to be trusted
+def eta(cur_encoder, target_encoder, power):
+    doubledegrees = abs(cur_encoder - target_encoder)
+    secs = doubledegrees / abs(power) / 5
+    return secs
+
+class BlockedException(Exception):
+    pass
+
+def is_blocked(cur, last, direction):
+    return direction * (cur - last) <= 0
+
+def debug_out(debstr):
+    debug = True
+    if debug:
+        print(debstr)
+
+
+# assumes brickpi is set up and motor is enabled
+# raises blocked exception if blocked
+# allow the motor to be off by 1 degrees by default
+def set_target_encoder(motor, target, power, timeout=1, threshold=4):
+    # update values
+    BrickPiUpdateValues()
+    # get current encoder
+    cur_encoder = BrickPi.Encoder[motor]
+    # if blocked
+    blocked = False
+    # direction of turn
+    direction = 1
+    if target - cur_encoder < 0:
+        direction = -1
+
+    current_time = time.time()
+
+    # start running
+    BrickPi.MotorSpeed[motor] = direction * power
+    BrickPiUpdateValues()
+    try:
+        while True:
+            # sleep for half of the estimated time of arrival
+            total_wait_time = eta(cur_encoder, target, power)/2
+            ot = time.time()
+            while (time.time() - ot < total_wait_time):
+                BrickPiUpdateValues()
+            
+            if not blocked: # if still blocked, don't reset the counter
+                last_encoder = cur_encoder
+                last_time = current_time
+            
+            cur_encoder = BrickPi.Encoder[motor]
+            current_time = time.time()
+            blocked = is_blocked(cur_encoder, last_encoder, direction)
+            if blocked:
+                debug_out("blocked")
+                if current_time - last_time > timeout:
+                    if abs(target - cur_encoder) <= threshold or direction * (cur_encoder - target) >= 0:
+                        break
+                    else:
+                        raise BlockedException("Blocked!")
+            else:
+                debug_out("advancing")
+            if abs(target - cur_encoder) <= threshold or direction * (cur_encoder - target) >= 0:
+                # reached target; break
+                break
+        # outside of loop
+        # recurse for precision (lower power = higher precision)
+        if power > 10:
+            set_target_encoder(motor, target, power//2)
+    finally:
+        # brake
+        BrickPi.MotorSpeed[motor] = 0
+        BrickPiUpdateValues()
