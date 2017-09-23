@@ -810,7 +810,7 @@ def is_blocked(cur, last, direction):
     return direction * (cur - last) <= 0
 
 def debug_out(debstr):
-    debug = True
+    debug = False
     if debug:
         print(debstr)
 
